@@ -90,18 +90,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
         }
 
         if !paneId.isEmpty {
+            let tmux = "/opt/homebrew/bin/tmux"
+
+            // Switch to the session containing the target pane
+            let p0 = Process()
+            p0.executableURL = URL(fileURLWithPath: tmux)
+            p0.arguments = ["switch-client", "-t", paneId]
+            try? p0.run()
+            p0.waitUntilExit()
+
             let p1 = Process()
-            p1.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/tmux")
+            p1.executableURL = URL(fileURLWithPath: tmux)
             p1.arguments = ["select-window", "-t", paneId]
             try? p1.run()
             p1.waitUntilExit()
 
             let p2 = Process()
-            p2.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/tmux")
+            p2.executableURL = URL(fileURLWithPath: tmux)
             p2.arguments = ["select-pane", "-t", paneId]
             try? p2.run()
             p2.waitUntilExit()
-            log("tmux select done")
+            log("tmux switch+select done")
         }
     }
 }
