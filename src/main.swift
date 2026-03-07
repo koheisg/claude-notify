@@ -48,9 +48,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
 
         log("sending notification: \(msg) (pane=\(paneId))")
 
-        // Unique ID per notification so multiple sessions don't overwrite each other
+        // Use pane ID as identifier so same-pane notifications replace each other
+        let notifId = paneId.isEmpty ? UUID().uuidString : "claude-\(paneId)"
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString, content: content, trigger: nil
+            identifier: notifId, content: content, trigger: nil
         )
         center.add(request) { error in
             if let error = error { log("error: \(error)") }
