@@ -81,14 +81,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     func focusGhosttyPane(paneId: String) {
         log("focusGhosttyPane paneId='\(paneId)'")
 
-        if let ghostty = NSWorkspace.shared.runningApplications.first(where: {
-            $0.bundleIdentifier == "com.mitchellh.ghostty"
-        }) {
-            ghostty.activate()
-            log("activated Ghostty")
-        } else {
-            log("Ghostty not found in running apps")
-        }
+        let activate = Process()
+        activate.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        activate.arguments = ["-e", "tell application \"Ghostty\" to activate"]
+        try? activate.run()
+        activate.waitUntilExit()
+        log("activated Ghostty via osascript (exit=\(activate.terminationStatus))")
 
         if !paneId.isEmpty {
             let tmux = "/opt/homebrew/bin/tmux"
