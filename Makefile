@@ -2,6 +2,7 @@ APP_NAME    := ClaudeNotify
 BUILD_DIR   := build
 APP_BUNDLE  := $(BUILD_DIR)/$(APP_NAME).app
 INSTALL_DIR := $(HOME)/.claude/hooks
+BIN_DIR     := $(HOME)/.local/bin
 SETTINGS    := $(HOME)/.claude/settings.json
 
 .PHONY: build install uninstall clean
@@ -26,6 +27,10 @@ install: build
 	cp hooks/save-tmux-pane.sh $(INSTALL_DIR)/
 	cp hooks/notify-on-stop.sh $(INSTALL_DIR)/
 	chmod +x $(INSTALL_DIR)/save-tmux-pane.sh $(INSTALL_DIR)/notify-on-stop.sh
+	@# Install claude-jump command
+	@mkdir -p $(BIN_DIR)
+	cp bin/claude-jump $(BIN_DIR)/
+	chmod +x $(BIN_DIR)/claude-jump
 	@# Merge hooks into settings.json
 	@/usr/bin/python3 scripts/merge-settings.py
 	@# Register as login item
@@ -40,6 +45,7 @@ uninstall:
 	rm -rf $(INSTALL_DIR)/$(APP_NAME).app
 	rm -f $(INSTALL_DIR)/save-tmux-pane.sh
 	rm -f $(INSTALL_DIR)/notify-on-stop.sh
+	rm -f $(BIN_DIR)/claude-jump
 	@# Remove login item
 	@osascript -e 'tell application "System Events" to delete login item "$(APP_NAME)"' 2>/dev/null || true
 	@echo "Uninstalled. Note: hooks entries in settings.json were not removed."

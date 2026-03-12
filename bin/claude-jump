@@ -1,0 +1,87 @@
+#!/bin/bash
+# Jump to a tmux pane that had a Claude Code notification.
+#
+# Usage:
+#   claude-jump          # jump to the last notified pane
+#   claude-jump --menu   # show tmux popup to pick a pane
+#   claude-jump --list   # list recent notification panes
+
+TMUX_CMD="/opt/homebrew/bin/tmux"
+HISTORY_FILE="/tmp/claude-notify-history"
+
+if [ ! -f "$HISTORY_FILE" ] || [ ! -s "$HISTORY_FILE" ]; then
+  echo "No notification history."
+  exit 1
+fi
+
+jump_to_pane() {
+  local pane_id="$1"
+  $TMUX_CMD switch-client -t "$pane_id" 2>/dev/null
+  $TMUX_CMD select-window -t "$pane_id" 2>/dev/null
+  $TMUX_CMD select-pane -t "$pane_id" 2>/dev/null
+}
+
+case "${1:-}" in
+  --list|-l)
+    # Show list with index
+    i=1
+    while IFS= read -r line; do
+      pane_id=$(echo "$line" | cut -d' ' -f1)
+      rest=$(echo "$line" | cut -d' ' -f2-)
+      # Check if pane still exists
+      if $TMUX_CMD list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx "$pane_id"; then
+        echo "  $i) $rest"
+      else
+        echo "  $i) $rest (gone)"
+      fi
+      i=$((i + 1))
+    done < "$HISTORY_FILE"
+    ;;
+
+  --menu|-m)
+    # Build menu items for tmux display-menu
+    MENU_ARGS=()
+    i=1
+    while IFS= read -r line; do
+      pane_id=$(echo "$line" | cut -d' ' -f1)
+      label=$(echo "$line" | cut -d' ' -f2-)
+      # Only show panes that still exist
+      if $TMUX_CMD list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx "$pane_id"; then
+        MENU_ARGS+=("$label" "$i" "run-shell '$0 $i'")
+      fi
+      i=$((i + 1))
+    done < "$HISTORY_FILE"
+
+    if [ ${#MENU_ARGS[@]} -eq 0 ]; then
+      $TMUX_CMD display-message "No active Claude panes"
+      exit 1
+    fi
+
+    $TMUX_CMD display-menu -T "Claude Jump" "${MENU_ARGS[@]}"
+    ;;
+
+  --help|-h)
+    echo "Usage: claude-jump [--menu|--list|N]"
+    echo ""
+    echo "  (no args)  Jump to the last notified pane"
+    echo "  N          Jump to the Nth pane in history"
+    echo "  --menu     Show tmux popup menu to pick a pane"
+    echo "  --list     List recent notification panes"
+    ;;
+
+  *)
+    # Jump to Nth entry or last (default: 1)
+    N="${1:-1}"
+    line=$(sed -n "${N}p" "$HISTORY_FILE")
+    if [ -z "$line" ]; then
+      echo "No entry #$N"
+      exit 1
+    fi
+    pane_id=$(echo "$line" | cut -d' ' -f1)
+    if ! $TMUX_CMD list-panes -a -F '#{pane_id}' 2>/dev/null | grep -qx "$pane_id"; then
+      echo "Pane $pane_id no longer exists"
+      exit 1
+    fi
+    jump_to_pane "$pane_id"
+    ;;
+esac

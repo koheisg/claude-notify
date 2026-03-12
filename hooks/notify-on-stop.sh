@@ -41,6 +41,16 @@ fi
 # Write pane info
 echo "$TMUX_PANE_ID" > /tmp/claude-notify-pane
 
+# Record notification history (newest first, dedup by pane)
+HISTORY_FILE="/tmp/claude-notify-history"
+if [ -n "$TMUX_PANE_ID" ] && [ -n "$PANE_LABEL" ]; then
+  ENTRY="${TMUX_PANE_ID} ${PANE_LABEL} ${SUMMARY}"
+  # Remove old entry for same pane, prepend new one, keep last 20
+  grep -v "^${TMUX_PANE_ID} " "$HISTORY_FILE" 2>/dev/null | head -19 > "${HISTORY_FILE}.tmp"
+  { echo "$ENTRY"; cat "${HISTORY_FILE}.tmp"; } > "$HISTORY_FILE"
+  rm -f "${HISTORY_FILE}.tmp"
+fi
+
 # Summarize last_assistant_message for notification
 SUMMARY=$(echo "$INPUT" | /usr/bin/python3 -c "
 import sys, json, re
